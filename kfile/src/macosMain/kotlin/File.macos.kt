@@ -1,0 +1,1 @@
+internal actual fun platformIsPathAbsolute(path: String): Boolean = path.startsWith("/")
