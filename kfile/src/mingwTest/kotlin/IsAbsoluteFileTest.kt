@@ -1,3 +1,4 @@
+import es.jvbabi.kfile.File
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 
