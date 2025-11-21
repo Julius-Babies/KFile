@@ -22,7 +22,10 @@ class File(private val path: String) {
         get() =
             if (isPathAbsolute(this.path)) this.path
             else getWorkingDirectory().currentPath + "/${this.path}"
+
+    fun exists(): Boolean = platformFileExists(this.absolutePath)
 }
 
 internal expect fun platformIsPathAbsolute(path: String): Boolean
 internal expect fun platformGetWorkingDirectory(): String
+internal expect fun platformFileExists(path: String): Boolean

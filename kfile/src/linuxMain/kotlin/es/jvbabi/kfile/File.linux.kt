@@ -6,6 +6,8 @@ import kotlinx.cinterop.allocArray
 import kotlinx.cinterop.convert
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.toKString
+import platform.posix.F_OK
+import platform.posix.access
 import platform.posix.getcwd
 import platform.posix.perror
 
@@ -22,4 +24,8 @@ internal actual fun platformGetWorkingDirectory(): String = memScoped {
     } else {
         buf.toKString()
     }
+}
+
+internal actual fun platformFileExists(path: String): Boolean {
+    return access(path, F_OK) == 0
 }

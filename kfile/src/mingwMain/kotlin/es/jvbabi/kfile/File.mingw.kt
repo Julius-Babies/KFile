@@ -4,7 +4,11 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.allocArray
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.toKString
+import kotlinx.cinterop.wcstr
+import platform.windows.FILE_ATTRIBUTE_DIRECTORY
 import platform.windows.GetCurrentDirectoryW
+import platform.windows.GetFileAttributesW
+import platform.windows.INVALID_FILE_ATTRIBUTES
 import platform.windows.WCHARVar
 
 /**
@@ -29,4 +33,10 @@ internal actual fun platformGetWorkingDirectory(): String {
             return buffer.toKString()
         }
     }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun platformFileExists(path: String): Boolean = memScoped {
+    val attrs = GetFileAttributesW(path)
+    attrs != INVALID_FILE_ATTRIBUTES && (attrs and FILE_ATTRIBUTE_DIRECTORY.toUInt()) == 0u
 }
