@@ -50,3 +50,7 @@ internal actual fun platformFileIsDirectory(path: String): Boolean {
         return (attrs and FILE_ATTRIBUTE_DIRECTORY.toUInt()) != 0u
     }
 }
+
+internal actual fun platformIsPathRoot(path: String): Boolean {
+    return regex.matchEntire(path.lowercase()) != null
+}

@@ -23,10 +23,55 @@ class File(private val path: String) {
             if (isPathAbsolute(this.path)) this.path
             else getWorkingDirectory().currentPath + "/${this.path}"
 
+    /**
+     * Get the segments of the absolute path. This will remove relative names like "." and resolve ".."
+     * @returns A list of path segments.
+     */
+    val cleanSegments: List<String>
+        get() = absolutePath
+            .split('/')
+            .filterNot { it == "." }
+            .filterNot { it.isEmpty() }
+            .toMutableList()
+            .let { segments ->
+                var i = 0
+                while (i < segments.size - 1) {
+                    if (i == segments.size - 1) break
+                    if (segments[i+1] == "..") {
+                        segments.removeAt(i+1)
+                        segments.removeAt(i)
+                        if (i > 0) {
+                            i--
+                            continue
+                        }
+                    }
+
+                    i++
+                }
+
+                segments
+            }
+            .toList()
+
     fun exists(): Boolean = platformFileExists(this.absolutePath)
     fun isDirectory(): Boolean = exists() && platformFileIsDirectory(this.absolutePath)
+
+    val parent: File?
+        get() =
+            if (platformIsPathRoot(this.absolutePath)) null
+            else File(
+                this.cleanSegments
+                    .dropLast(1)
+                    .let { segments ->
+                        // Add a leading slash since it gets removed in cleanSegments, on POSIX platforms, it must be added back again
+                        if (platformIsPathRoot(segments.first())) segments
+                        else listOf("") + segments
+                    }
+                    .joinToString("/")
+            )
 }
 
+internal expect fun platformIsPathRoot(path: String): Boolean
 internal expect fun platformIsPathAbsolute(path: String): Boolean
 internal expect fun platformGetWorkingDirectory(): String
 internal expect fun platformFileExists(path: String): Boolean

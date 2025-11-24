@@ -20,3 +20,5 @@ internal actual fun platformFileIsDirectory(path: String): Boolean {
         return boolVar.value
     }
 }
+
+internal actual fun platformIsPathRoot(path: String): Boolean = path == "/"

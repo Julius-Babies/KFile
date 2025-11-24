@@ -43,3 +43,5 @@ internal actual fun platformFileIsDirectory(path: String): Boolean = memScoped {
     }
     return (statBuf.st_mode and S_IFMT.toUInt()) == S_IFDIR.toUInt()
 }
+
+internal actual fun platformIsPathRoot(path: String): Boolean = path == "/"
