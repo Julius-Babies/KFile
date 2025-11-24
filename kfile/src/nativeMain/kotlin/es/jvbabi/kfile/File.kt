@@ -4,6 +4,16 @@ class File(path: String) {
 
     private val normalizedAbsolutePath: String = normalize(path)
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is File) return false
+        return normalizedAbsolutePath == other.normalizedAbsolutePath
+    }
+
+    override fun hashCode(): Int {
+        return normalizedAbsolutePath.hashCode()
+    }
+
     companion object {
         fun isPathAbsolute(path: String) = platformIsPathAbsolute(path)
         fun getWorkingDirectory(): File = File(platformGetWorkingDirectory())
