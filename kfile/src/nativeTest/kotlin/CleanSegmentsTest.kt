@@ -8,13 +8,6 @@ class CleanSegmentsTest : FunSpec({
 
         val file = File("./Data/../Data1/Data2/../../")
 
-        val currentDirSegments = currentDir.cleanSegments
-        val fileSegments = file.cleanSegments
-
-        fileSegments.size shouldBe currentDirSegments.size
-
-        currentDirSegments.forEachIndexed { i, currentDirSegment ->
-            currentDirSegment shouldBe fileSegments[i]
-        }
+        currentDir.absolutePath shouldBe file.absolutePath
     }
 })

@@ -10,6 +10,6 @@ class ParentDirectoryTest : FunSpec({
         val parent2 = File(currentDir.absolutePath + "/..")
 
         parent.shouldNotBeNull()
-        parent.cleanSegments shouldBe parent2.cleanSegments
+        parent.absolutePath shouldBe parent2.absolutePath
     }
 })
