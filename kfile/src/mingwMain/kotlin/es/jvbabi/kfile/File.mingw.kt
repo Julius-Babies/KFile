@@ -1,14 +1,19 @@
 package es.jvbabi.kfile
 
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.alloc
 import kotlinx.cinterop.allocArray
 import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
 import kotlinx.cinterop.toKString
 import platform.windows.FILE_ATTRIBUTE_DIRECTORY
+import platform.windows.GET_FILEEX_INFO_LEVELS
 import platform.windows.GetCurrentDirectoryW
+import platform.windows.GetFileAttributesExW
 import platform.windows.GetFileAttributesW
 import platform.windows.INVALID_FILE_ATTRIBUTES
 import platform.windows.WCHARVar
+import platform.windows.WIN32_FILE_ATTRIBUTE_DATA
 
 /**
  * Check if the path starts with a Drive Letter, followed by a colon.
@@ -53,4 +58,25 @@ internal actual fun platformFileIsDirectory(path: String): Boolean {
 
 internal actual fun platformIsPathRoot(path: String): Boolean {
     return regex.matchEntire(path.lowercase()) != null
+}
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun platformGetFileSize(path: String): Long {
+    memScoped {
+        val data = alloc<WIN32_FILE_ATTRIBUTE_DATA>()
+
+        val ok = GetFileAttributesExW(
+            path,
+            GET_FILEEX_INFO_LEVELS.GetFileExInfoStandard,
+            data.ptr
+        )
+
+        if (ok == 0) {
+            return -1
+        }
+
+        val high = data.nFileSizeHigh.toLong() shl 32
+        val low = data.nFileSizeLow.toLong() and 0xFFFFFFFF
+        return high or low
+    }
 }

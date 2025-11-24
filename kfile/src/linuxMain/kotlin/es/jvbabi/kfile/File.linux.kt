@@ -45,3 +45,14 @@ internal actual fun platformFileIsDirectory(path: String): Boolean = memScoped {
 }
 
 internal actual fun platformIsPathRoot(path: String): Boolean = path == "/"
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun platformGetFileSize(path: String): Long {
+    memScoped {
+        val statBuf = alloc<stat>()
+        if (stat(path, statBuf.ptr) == 0) {
+            return statBuf.st_size
+        } else {
+            throw Exception("Failed to get attributes of file $path")
+        }
+    }
+}

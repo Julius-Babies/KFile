@@ -57,6 +57,9 @@ class File(path: String) {
             }
 
     fun resolve(path: String): File = File("$absolutePath/$path")
+
+    val size: Long
+        get() = platformGetFileSize(absolutePath)
 }
 
 internal expect fun platformIsPathRoot(path: String): Boolean
@@ -64,3 +67,4 @@ internal expect fun platformIsPathAbsolute(path: String): Boolean
 internal expect fun platformGetWorkingDirectory(): String
 internal expect fun platformFileExists(path: String): Boolean
 internal expect fun platformFileIsDirectory(path: String): Boolean
+internal expect fun platformGetFileSize(path: String): Long
