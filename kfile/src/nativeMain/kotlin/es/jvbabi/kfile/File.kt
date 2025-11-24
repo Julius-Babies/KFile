@@ -55,6 +55,8 @@ class File(path: String) {
                     File(parentPath)
                 }
             }
+
+    fun resolve(path: String): File = File("$absolutePath/$path")
 }
 
 internal expect fun platformIsPathRoot(path: String): Boolean
