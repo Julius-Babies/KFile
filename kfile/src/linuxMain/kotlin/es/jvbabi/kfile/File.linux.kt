@@ -6,15 +6,22 @@ import kotlinx.cinterop.alloc
 import kotlinx.cinterop.allocArray
 import kotlinx.cinterop.convert
 import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.nativeHeap
+import kotlinx.cinterop.pointed
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.toKString
 import platform.posix.F_OK
 import platform.posix.S_IFDIR
 import platform.posix.S_IFMT
 import platform.posix.access
+import platform.posix.closedir
 import platform.posix.getcwd
+import platform.posix.opendir
 import platform.posix.perror
+import platform.posix.readdir
+import platform.posix.rmdir
 import platform.posix.stat
+import platform.posix.unlink
 
 internal actual fun platformIsPathAbsolute(path: String): Boolean = path.startsWith('/')
 
@@ -53,6 +60,41 @@ internal actual fun platformGetFileSize(path: String): Long {
             return statBuf.st_size
         } else {
             throw Exception("Failed to get attributes of file $path")
+        }
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun platformDelete(path: String, recursive: Boolean) {
+    fun deleteRecursively(p: String) {
+        val statBuf = nativeHeap.alloc<stat>()
+        if (stat(p, statBuf.ptr) != 0) return
+        if ((statBuf.st_mode and S_IFDIR.toUInt()).toInt() != 0) {
+            val dir = opendir(p) ?: return
+            try {
+                var entry = readdir(dir)
+                while (entry != null) {
+                    val name = entry.pointed.d_name.toKString()
+                    if (name != "." && name != "..") {
+                        deleteRecursively("$p/$name")
+                    }
+                    entry = readdir(dir)
+                }
+            } finally {
+                closedir(dir)
+            }
+            rmdir(p)
+        } else {
+            unlink(p)
+        }
+    }
+
+    if (recursive) deleteRecursively(path)
+    else {
+        val statBuf = nativeHeap.alloc<stat>()
+        if (stat(path, statBuf.ptr) == 0) {
+            if ((statBuf.st_mode and S_IFDIR.toUInt()).toInt() != 0) rmdir(path)
+            else unlink(path)
         }
     }
 }

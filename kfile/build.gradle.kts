@@ -18,6 +18,7 @@ kotlin {
     mingwX64()
     linuxX64()
     linuxArm64()
+    jvm()
 
     applyDefaultHierarchyTemplate()
 
@@ -25,6 +26,10 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotest.framework)
             implementation(libs.kotest.assertions)
+        }
+
+        jvmMain.dependencies {
+            implementation(libs.apache.commons.lang)
         }
     }
 }

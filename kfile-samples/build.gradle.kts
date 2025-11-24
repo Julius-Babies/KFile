@@ -16,6 +16,7 @@ kotlin {
         macosArm64(),
         macosX64(),
     )
+    jvm()
     applyDefaultHierarchyTemplate()
 
     targets.forEach { target ->
@@ -29,7 +30,7 @@ kotlin {
     }
 
     sourceSets {
-        nativeMain.dependencies {
+        commonMain.dependencies {
             implementation(project(":kfile"))
         }
     }

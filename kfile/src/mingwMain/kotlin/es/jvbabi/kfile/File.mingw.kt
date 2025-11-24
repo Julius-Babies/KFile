@@ -80,3 +80,6 @@ internal actual fun platformGetFileSize(path: String): Long {
         return high or low
     }
 }
+
+internal actual fun platformDelete(path: String, recursive: Boolean) {
+}

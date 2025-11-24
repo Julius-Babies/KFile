@@ -70,11 +70,19 @@ class File(path: String) {
 
     val size: Long
         get() = platformGetFileSize(absolutePath)
+
+    fun delete(recursive: Boolean = false) {
+        platformDelete(absolutePath, recursive)
+    }
 }
 
+/**
+ * @return true if the path represents the root of the file system, "/" in POSIX or a drive letter in Windows.
+ */
 internal expect fun platformIsPathRoot(path: String): Boolean
 internal expect fun platformIsPathAbsolute(path: String): Boolean
 internal expect fun platformGetWorkingDirectory(): String
 internal expect fun platformFileExists(path: String): Boolean
 internal expect fun platformFileIsDirectory(path: String): Boolean
 internal expect fun platformGetFileSize(path: String): Long
+internal expect fun platformDelete(path: String, recursive: Boolean)
