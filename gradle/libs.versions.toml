@@ -14,3 +14,4 @@ apache-commons-lang = { module = "org.apache.commons:commons-lang3", version.ref
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-symbol-processing = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotest = { id = "io.kotest", version.ref = "kotest" }
+maven-publish = { id = "com.vanniktech.maven.publish", version = "0.34.0" }
