@@ -74,6 +74,10 @@ class File(path: String) {
     fun delete(recursive: Boolean = false) {
         platformDelete(absolutePath, recursive)
     }
+
+    fun mkdir(recursive: Boolean = false) {
+        mkdir(absolutePath, recursive)
+    }
 }
 
 /**
@@ -86,3 +90,4 @@ internal expect fun platformFileExists(path: String): Boolean
 internal expect fun platformFileIsDirectory(path: String): Boolean
 internal expect fun platformGetFileSize(path: String): Long
 internal expect fun platformDelete(path: String, recursive: Boolean)
+internal expect fun mkdir(path: String, recursive: Boolean)

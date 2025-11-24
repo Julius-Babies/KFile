@@ -39,3 +39,7 @@ internal actual fun platformGetFileSize(path: String): Long {
 internal actual fun platformDelete(path: String, recursive: Boolean) {
     File(path).delete(recursive)
 }
+
+internal actual fun mkdir(path: String, recursive: Boolean) {
+    File(path).mkdir(recursive)
+}

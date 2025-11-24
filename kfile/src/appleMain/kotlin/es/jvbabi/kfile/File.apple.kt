@@ -56,3 +56,14 @@ internal actual fun platformDelete(path: String, recursive: Boolean) {
         throw IllegalStateException("Failed to delete '$path': ${error.value?.localizedDescription}")
     }
 }
+
+@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
+internal actual fun mkdir(path: String, recursive: Boolean) {
+    val fm = NSFileManager.defaultManager
+    val url = NSURL.fileURLWithPath(path)
+    val error = nativeHeap.alloc<ObjCObjectVar<NSError?>>()
+    val success = fm.createDirectoryAtURL(url, withIntermediateDirectories = recursive, attributes = null, error = error.ptr)
+    if (!success) {
+        throw IllegalStateException("Failed to create directory '$path': ${error.value?.localizedDescription}")
+    }
+}

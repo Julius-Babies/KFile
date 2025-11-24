@@ -10,12 +10,15 @@ import kotlinx.cinterop.nativeHeap
 import kotlinx.cinterop.pointed
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.toKString
+import platform.posix.EEXIST
 import platform.posix.F_OK
 import platform.posix.S_IFDIR
 import platform.posix.S_IFMT
 import platform.posix.access
 import platform.posix.closedir
+import platform.posix.errno
 import platform.posix.getcwd
+import platform.posix.mkdir
 import platform.posix.opendir
 import platform.posix.perror
 import platform.posix.readdir
@@ -95,6 +98,24 @@ internal actual fun platformDelete(path: String, recursive: Boolean) {
         if (stat(path, statBuf.ptr) == 0) {
             if ((statBuf.st_mode and S_IFDIR.toUInt()).toInt() != 0) rmdir(path)
             else unlink(path)
+        }
+    }
+}
+
+internal actual fun mkdir(path: String, recursive: Boolean) {
+    if (!recursive) {
+        if (mkdir(path, 0x1FF.toUInt()) != 0) { // 0x1FF = 0777
+            perror("mkdir")
+        }
+        return
+    }
+
+    val segments = path.split('/').filter { it.isNotEmpty() }
+    var currentPath = if (path.startsWith("/")) "/" else ""
+    for (segment in segments) {
+        currentPath += if (currentPath.endsWith("/")) segment else "/$segment"
+        if (mkdir(currentPath, 0x1FF.toUInt()) != 0) {
+            if (errno != EEXIST) perror("mkdir")
         }
     }
 }
