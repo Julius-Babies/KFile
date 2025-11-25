@@ -13,8 +13,11 @@ import platform.Foundation.NSError
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSFileSize
 import platform.Foundation.NSNumber
+import platform.Foundation.NSString
 import platform.Foundation.NSURL
+import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.homeDirectoryForCurrentUser
+import platform.Foundation.stringWithContentsOfFile
 
 internal actual fun platformIsPathAbsolute(path: String): Boolean = path.startsWith("/")
 internal actual fun platformGetWorkingDirectory(): String = NSFileManager.defaultManager.currentDirectoryPath
@@ -72,4 +75,14 @@ internal actual fun platformMkdir(path: String, recursive: Boolean) {
 internal actual fun platformGetUserHome(): String {
     return NSFileManager.defaultManager.homeDirectoryForCurrentUser.path
         ?: throw Exception("Failed to get user home directory")
+}
+
+@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
+internal actual fun platformReadFileToString(path: String): String {
+    memScoped {
+        val error = alloc<ObjCObjectVar<NSError?>>()
+        val data = NSString.stringWithContentsOfFile(path, encoding = NSUTF8StringEncoding, error = error.ptr)
+            ?: throw Exception("Failed to read file $path: ${error.value?.localizedDescription}")
+        return data
+    }
 }

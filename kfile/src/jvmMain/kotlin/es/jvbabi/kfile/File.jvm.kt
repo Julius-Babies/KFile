@@ -47,3 +47,7 @@ internal actual fun platformMkdir(path: String, recursive: Boolean) {
 internal actual fun platformGetUserHome(): String {
     return System.getProperty("user.home")
 }
+
+internal actual fun platformReadFileToString(path: String): String {
+    return File(path).readText()
+}

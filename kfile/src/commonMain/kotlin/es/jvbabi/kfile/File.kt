@@ -79,6 +79,17 @@ class File(path: String) {
     fun mkdir(recursive: Boolean = false) {
         platformMkdir(absolutePath, recursive)
     }
+
+    /**
+     * Reads the entire contents of this file as a String.
+     * If the file is very large, this may cause an OutOfMemoryError as all of the content is loaded into memory.
+     * If you're running this on a directory, you'll receive an exception.
+     * @throws FileOperationOnDirectoryException
+     */
+    fun readText(): String {
+        if (isDirectory()) throw FileOperationOnDirectoryException("Cannot read text from a directory")
+        return platformReadFileToString(absolutePath)
+    }
 }
 
 /**
@@ -93,3 +104,7 @@ internal expect fun platformGetFileSize(path: String): Long
 internal expect fun platformDelete(path: String, recursive: Boolean)
 internal expect fun platformMkdir(path: String, recursive: Boolean)
 internal expect fun platformGetUserHome(): String
+internal expect fun platformReadFileToString(path: String): String
+
+open class FileException(message: String) : Exception(message)
+class FileOperationOnDirectoryException(message: String) : FileException("This operation is only allowed on a file, not a directory: $message")

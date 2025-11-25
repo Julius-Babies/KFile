@@ -141,3 +141,54 @@ internal actual fun platformGetUserHome(): String {
         return outPtr.value!!.toKString()
     }
 }
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun platformReadFileToString(path: String): String {
+    memScoped {
+        val handle = CreateFileW(
+            path,
+            GENERIC_READ,
+            FILE_SHARE_READ.toUInt(),
+            null,
+            OPEN_EXISTING.toUInt(),
+            FILE_ATTRIBUTE_NORMAL.toUInt(),
+            null
+        )
+        if (handle == INVALID_HANDLE_VALUE) {
+            throw IllegalArgumentException("Cannot open file: $path")
+        }
+
+        try {
+            val fileSizeHigh = alloc<DWORDVar>()
+            val fileSizeLow = GetFileSize(handle, fileSizeHigh.ptr)
+            if (fileSizeLow == INVALID_FILE_SIZE && GetLastError() != 0u) {
+                throw IllegalStateException("Cannot get file size for: $path")
+            }
+
+            val size = (fileSizeHigh.value.toULong() shl 32) or fileSizeLow.toULong()
+            if (size > Int.MAX_VALUE.toULong()) {
+                throw IllegalStateException("File too large to read into memory")
+            }
+
+            val buffer = ByteArray(size.toInt())
+            val bytesRead = alloc<DWORDVar>()
+
+            val success = buffer.usePinned { pinned ->
+                ReadFile(
+                    handle,
+                    pinned.addressOf(0),
+                    size.toUInt(),
+                    bytesRead.ptr,
+                    null
+                )
+            }
+            if (success != 0 || bytesRead.value.toULong() != size) {
+                throw IllegalStateException("Failed to read file: $path")
+            }
+
+            return buffer.decodeToString()
+        } finally {
+            CloseHandle(handle)
+        }
+    }
+}

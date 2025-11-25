@@ -9,20 +9,28 @@ import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.nativeHeap
 import kotlinx.cinterop.pointed
 import kotlinx.cinterop.ptr
+import kotlinx.cinterop.refTo
 import kotlinx.cinterop.toKString
 import platform.posix.EEXIST
 import platform.posix.F_OK
+import platform.posix.SEEK_END
 import platform.posix.S_IFDIR
 import platform.posix.S_IFMT
 import platform.posix.access
 import platform.posix.closedir
 import platform.posix.errno
+import platform.posix.fclose
+import platform.posix.fopen
+import platform.posix.fread
+import platform.posix.fseek
+import platform.posix.ftell
 import platform.posix.getcwd
 import platform.posix.getenv
 import platform.posix.mkdir
 import platform.posix.opendir
 import platform.posix.perror
 import platform.posix.readdir
+import platform.posix.rewind
 import platform.posix.rmdir
 import platform.posix.stat
 import platform.posix.unlink
@@ -126,5 +134,25 @@ internal actual fun platformGetUserHome(): String {
     memScoped {
         getenv("HOME")?.toKString()?.let { return it }
         throw IllegalStateException("HOME environment variable not set")
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun platformReadFileToString(path: String): String {
+    val file = fopen(path, "rb") ?: throw IllegalArgumentException("File not found: $path")
+    try {
+        fseek(file, 0, SEEK_END)
+        val size = ftell(file)
+        rewind(file)
+
+        val buffer = ByteArray(size.toInt())
+        memScoped {
+            val cBuffer = buffer.refTo(0)
+            fread(cBuffer, 1.convert(), size.convert(), file)
+        }
+
+        return buffer.decodeToString()
+    } finally {
+        fclose(file)
     }
 }
