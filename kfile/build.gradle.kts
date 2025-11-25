@@ -39,6 +39,7 @@ kotlin {
 tasks.withType<Test>().configureEach {
     logger.lifecycle("UP-TO-DATE check for $name is disabled, forcing it to run.")
     outputs.upToDateWhen { false }
+    failOnNoDiscoveredTests = false
 }
 
 tasks.withType<PublishToMavenRepository> {
