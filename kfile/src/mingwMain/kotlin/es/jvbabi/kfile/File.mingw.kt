@@ -1,31 +1,7 @@
 package es.jvbabi.kfile
 
-import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.alloc
-import kotlinx.cinterop.allocArray
-import kotlinx.cinterop.memScoped
-import kotlinx.cinterop.nativeHeap
-import kotlinx.cinterop.ptr
-import kotlinx.cinterop.toKString
-import platform.windows.CreateDirectoryA
-import platform.windows.DeleteFileA
-import platform.windows.ERROR_ALREADY_EXISTS
-import platform.windows.FILE_ATTRIBUTE_DIRECTORY
-import platform.windows.FindClose
-import platform.windows.FindFirstFileA
-import platform.windows.FindNextFileA
-import platform.windows.GET_FILEEX_INFO_LEVELS
-import platform.windows.GetCurrentDirectoryW
-import platform.windows.GetFileAttributesA
-import platform.windows.GetFileAttributesExW
-import platform.windows.GetFileAttributesW
-import platform.windows.GetLastError
-import platform.windows.INVALID_FILE_ATTRIBUTES
-import platform.windows.INVALID_HANDLE_VALUE
-import platform.windows.RemoveDirectoryA
-import platform.windows.WCHARVar
-import platform.windows.WIN32_FILE_ATTRIBUTE_DATA
-import platform.windows.WIN32_FIND_DATAA
+import kotlinx.cinterop.*
+import platform.windows.*
 
 /**
  * Check if the path starts with a Drive Letter, followed by a colon.
@@ -126,7 +102,7 @@ internal actual fun platformDelete(path: String, recursive: Boolean) {
     }
 }
 
-internal actual fun mkdir(path: String, recursive: Boolean) {
+internal actual fun platformMkdir(path: String, recursive: Boolean) {
     fun createRecursively(p: String) {
         val segments = p.split("\\").filter { it.isNotEmpty() }
         var currentPath = if (p.startsWith("\\")) "\\" else ""
@@ -151,5 +127,17 @@ internal actual fun mkdir(path: String, recursive: Boolean) {
                 throw IllegalStateException("Failed to create directory '$path', error $err")
             }
         }
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun platformGetUserHome(): String {
+    memScoped {
+        val outPtr = alloc<CPointerVar<WCHARVar>>()
+        val result = SHGetKnownFolderPath(null, CSIDL_PROFILE.toUInt(), NULL, outPtr.ptr)
+        if (result != 0) {
+            throw Exception("Failed to get user home directory")
+        }
+        return outPtr.value!!.toKString()
     }
 }

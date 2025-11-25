@@ -18,6 +18,7 @@ import platform.posix.access
 import platform.posix.closedir
 import platform.posix.errno
 import platform.posix.getcwd
+import platform.posix.getenv
 import platform.posix.mkdir
 import platform.posix.opendir
 import platform.posix.perror
@@ -102,7 +103,7 @@ internal actual fun platformDelete(path: String, recursive: Boolean) {
     }
 }
 
-internal actual fun mkdir(path: String, recursive: Boolean) {
+internal actual fun platformMkdir(path: String, recursive: Boolean) {
     if (!recursive) {
         if (mkdir(path, 0x1FF.toUInt()) != 0) { // 0x1FF = 0777
             perror("mkdir")
@@ -117,5 +118,13 @@ internal actual fun mkdir(path: String, recursive: Boolean) {
         if (mkdir(currentPath, 0x1FF.toUInt()) != 0) {
             if (errno != EEXIST) perror("mkdir")
         }
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun platformGetUserHome(): String {
+    memScoped {
+        getenv("HOME")?.toKString()?.let { return it }
+        throw IllegalStateException("HOME environment variable not set")
     }
 }

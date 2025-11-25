@@ -17,6 +17,7 @@ class File(path: String) {
     companion object {
         fun isPathAbsolute(path: String) = platformIsPathAbsolute(path)
         fun getWorkingDirectory(): File = File(platformGetWorkingDirectory())
+        fun getUserHomeDirectory(): File = File(platformGetUserHome())
 
         private fun normalize(input: String): String {
             val absolute = if (isPathAbsolute(input)) {
@@ -76,7 +77,7 @@ class File(path: String) {
     }
 
     fun mkdir(recursive: Boolean = false) {
-        mkdir(absolutePath, recursive)
+        platformMkdir(absolutePath, recursive)
     }
 }
 
@@ -90,4 +91,5 @@ internal expect fun platformFileExists(path: String): Boolean
 internal expect fun platformFileIsDirectory(path: String): Boolean
 internal expect fun platformGetFileSize(path: String): Long
 internal expect fun platformDelete(path: String, recursive: Boolean)
-internal expect fun mkdir(path: String, recursive: Boolean)
+internal expect fun platformMkdir(path: String, recursive: Boolean)
+internal expect fun platformGetUserHome(): String

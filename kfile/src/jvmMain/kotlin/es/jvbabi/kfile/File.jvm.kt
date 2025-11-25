@@ -40,6 +40,10 @@ internal actual fun platformDelete(path: String, recursive: Boolean) {
     File(path).delete(recursive)
 }
 
-internal actual fun mkdir(path: String, recursive: Boolean) {
+internal actual fun platformMkdir(path: String, recursive: Boolean) {
     File(path).mkdir(recursive)
+}
+
+internal actual fun platformGetUserHome(): String {
+    return System.getProperty("user.home")
 }

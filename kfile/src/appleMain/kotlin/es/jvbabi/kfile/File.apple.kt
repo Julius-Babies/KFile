@@ -14,6 +14,7 @@ import platform.Foundation.NSFileManager
 import platform.Foundation.NSFileSize
 import platform.Foundation.NSNumber
 import platform.Foundation.NSURL
+import platform.Foundation.homeDirectoryForCurrentUser
 
 internal actual fun platformIsPathAbsolute(path: String): Boolean = path.startsWith("/")
 internal actual fun platformGetWorkingDirectory(): String = NSFileManager.defaultManager.currentDirectoryPath
@@ -58,7 +59,7 @@ internal actual fun platformDelete(path: String, recursive: Boolean) {
 }
 
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-internal actual fun mkdir(path: String, recursive: Boolean) {
+internal actual fun platformMkdir(path: String, recursive: Boolean) {
     val fm = NSFileManager.defaultManager
     val url = NSURL.fileURLWithPath(path)
     val error = nativeHeap.alloc<ObjCObjectVar<NSError?>>()
@@ -66,4 +67,9 @@ internal actual fun mkdir(path: String, recursive: Boolean) {
     if (!success) {
         throw IllegalStateException("Failed to create directory '$path': ${error.value?.localizedDescription}")
     }
+}
+
+internal actual fun platformGetUserHome(): String {
+    return NSFileManager.defaultManager.homeDirectoryForCurrentUser.path
+        ?: throw Exception("Failed to get user home directory")
 }
