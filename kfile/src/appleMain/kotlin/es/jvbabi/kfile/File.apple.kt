@@ -16,8 +16,11 @@ import platform.Foundation.NSNumber
 import platform.Foundation.NSString
 import platform.Foundation.NSURL
 import platform.Foundation.NSUTF8StringEncoding
+import platform.Foundation.create
 import platform.Foundation.homeDirectoryForCurrentUser
 import platform.Foundation.stringWithContentsOfFile
+import platform.Foundation.temporaryDirectory
+import platform.Foundation.writeToFile
 
 internal actual fun platformIsPathAbsolute(path: String): Boolean = path.startsWith("/")
 internal actual fun platformGetWorkingDirectory(): String = NSFileManager.defaultManager.currentDirectoryPath
@@ -84,5 +87,19 @@ internal actual fun platformReadFileToString(path: String): String {
         val data = NSString.stringWithContentsOfFile(path, encoding = NSUTF8StringEncoding, error = error.ptr)
             ?: throw Exception("Failed to read file $path: ${error.value?.localizedDescription}")
         return data
+    }
+}
+
+internal actual fun platformGetTempDirectory(): String {
+    return NSFileManager.defaultManager.temporaryDirectory.path
+        ?: throw Exception("Failed to get temporary directory")
+}
+
+@OptIn(BetaInteropApi::class, ExperimentalForeignApi::class)
+internal actual fun platformWriteTextToFile(path: String, text: String) {
+    val nsString = NSString.create(string = text)
+    val success = nsString.writeToFile(path, atomically = true, encoding = NSUTF8StringEncoding, error = null)
+    if (!success) {
+        throw IllegalStateException("Failed to write file: $path")
     }
 }

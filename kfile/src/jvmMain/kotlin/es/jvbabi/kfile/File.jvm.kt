@@ -21,27 +21,29 @@ internal actual fun platformIsPathAbsolute(path: String): Boolean {
 }
 
 internal actual fun platformGetWorkingDirectory(): String {
-    return File(".").absolutePath
+    return java.io.File(".").absolutePath
 }
 
 internal actual fun platformFileExists(path: String): Boolean {
-    return File(path).exists()
+    return java.io.File(path).exists()
 }
 
 internal actual fun platformFileIsDirectory(path: String): Boolean {
-    return File(path).isDirectory()
+    return java.io.File(path).isDirectory()
 }
 
 internal actual fun platformGetFileSize(path: String): Long {
-    return File(path).size
+    return java.io.File(path).length()
 }
 
 internal actual fun platformDelete(path: String, recursive: Boolean) {
-    File(path).delete(recursive)
+    if (recursive) java.io.File(path).deleteRecursively()
+    else java.io.File(path).delete()
 }
 
 internal actual fun platformMkdir(path: String, recursive: Boolean) {
-    File(path).mkdir(recursive)
+    if (recursive) java.io.File(path).mkdirs()
+    else java.io.File(path).mkdir()
 }
 
 internal actual fun platformGetUserHome(): String {
@@ -49,5 +51,17 @@ internal actual fun platformGetUserHome(): String {
 }
 
 internal actual fun platformReadFileToString(path: String): String {
-    return File(path).readText()
+    return with(java.io.File(path)) {
+        readText()
+    }
+}
+
+internal actual fun platformGetTempDirectory(): String {
+    return System.getProperty("java.io.tmpdir")
+}
+
+internal actual fun platformWriteTextToFile(path: String, text: String) {
+    with (java.io.File(path)) {
+        writeText(text)
+    }
 }

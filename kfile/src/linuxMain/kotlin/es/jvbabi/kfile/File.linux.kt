@@ -24,6 +24,7 @@ import platform.posix.fopen
 import platform.posix.fread
 import platform.posix.fseek
 import platform.posix.ftell
+import platform.posix.fwrite
 import platform.posix.getcwd
 import platform.posix.getenv
 import platform.posix.mkdir
@@ -152,6 +153,26 @@ internal actual fun platformReadFileToString(path: String): String {
         }
 
         return buffer.decodeToString()
+    } finally {
+        fclose(file)
+    }
+}
+
+internal actual fun platformGetTempDirectory(): String {
+    return "/tmp"
+}
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun platformWriteTextToFile(path: String, text: String) {
+    val file = fopen(path, "wb") ?: throw IllegalArgumentException("Cannot open file: $path")
+    try {
+        val bytes = text.encodeToByteArray()
+        memScoped {
+            val written = fwrite(bytes.refTo(0), 1.convert(), bytes.size.convert(), file)
+            if (written.toInt() != bytes.size) {
+                throw IllegalStateException("Failed to write all bytes to file: $path")
+            }
+        }
     } finally {
         fclose(file)
     }

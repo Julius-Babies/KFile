@@ -192,3 +192,56 @@ internal actual fun platformReadFileToString(path: String): String {
         }
     }
 }
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun platformGetTempDirectory(): String {
+    val bufferLength = MAX_PATH + 1
+    return memScoped {
+        val buffer = allocArray<ByteVar>(bufferLength)
+        val result = GetTempPathA(bufferLength.toUInt(), buffer)
+        if (result == 0u) {
+            val err = GetLastError()
+            throw RuntimeException("GetTempPath2A failed, error: $err")
+        }
+        val str = buffer.toKString()
+        str
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun platformWriteTextToFile(path: String, text: String) {
+    memScoped {
+        val handle = CreateFileW(
+            path,
+            GENERIC_WRITE.toUInt(),
+            0u,
+            null,
+            CREATE_ALWAYS.toUInt(),
+            FILE_ATTRIBUTE_NORMAL.toUInt(),
+            null
+        )
+        if (handle == INVALID_HANDLE_VALUE) {
+            throw IllegalStateException("Cannot open file: $path")
+        }
+
+        try {
+            val bytes = text.encodeToByteArray()
+            val bytesWritten = alloc<DWORDVar>()
+            val success: Boolean = bytes.usePinned { pinned ->
+                WriteFile(
+                    handle,
+                    pinned.addressOf(0),  // CPointer<out CPointed>
+                    bytes.size.toUInt(),
+                    bytesWritten.ptr,
+                    null
+                ) == 0
+            }
+
+            if (!success || bytesWritten.value.toInt() != bytes.size) {
+                throw IllegalStateException("Failed to write file: $path")
+            }
+        } finally {
+            CloseHandle(handle)
+        }
+    }
+}
