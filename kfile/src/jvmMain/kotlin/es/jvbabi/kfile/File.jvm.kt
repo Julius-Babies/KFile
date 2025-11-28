@@ -65,3 +65,7 @@ internal actual fun platformWriteTextToFile(path: String, text: String) {
         writeText(text)
     }
 }
+
+internal actual fun platformGetFileNamesInDirectory(path: String): List<String> {
+    return java.io.File(path).list()?.toList() ?: emptyList()
+}

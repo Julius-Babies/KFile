@@ -53,6 +53,9 @@ class File(path: String) {
     val absolutePath: String
         get() = normalizedAbsolutePath
 
+    val name: String
+        get() = absolutePath.split('/').last()
+
     fun exists(): Boolean = platformFileExists(absolutePath)
     fun isDirectory(): Boolean = exists() && platformFileIsDirectory(absolutePath)
 
@@ -96,6 +99,11 @@ class File(path: String) {
         if (isDirectory()) throw FileOperationOnDirectoryException("Cannot write text to a directory")
         platformWriteTextToFile(absolutePath, text)
     }
+
+    fun listFiles(): List<File> {
+        if (!isDirectory()) throw DirectoryOperationOnFileException("Cannot list files from a file")
+        return platformGetFileNamesInDirectory(absolutePath).map { this.resolve(it) }
+    }
 }
 
 /**
@@ -113,6 +121,8 @@ internal expect fun platformDelete(path: String, recursive: Boolean)
 internal expect fun platformMkdir(path: String, recursive: Boolean)
 internal expect fun platformReadFileToString(path: String): String
 internal expect fun platformWriteTextToFile(path: String, text: String)
+internal expect fun platformGetFileNamesInDirectory(path: String): List<String>
 
 open class FileException(message: String) : Exception(message)
 class FileOperationOnDirectoryException(message: String) : FileException("This operation is only allowed on a file, not a directory: $message")
+class DirectoryOperationOnFileException(message: String) : FileException("This operation is only allowed on a directory, not a file: $message")

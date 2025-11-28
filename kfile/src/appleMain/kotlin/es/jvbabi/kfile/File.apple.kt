@@ -103,3 +103,14 @@ internal actual fun platformWriteTextToFile(path: String, text: String) {
         throw IllegalStateException("Failed to write file: $path")
     }
 }
+
+@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
+internal actual fun platformGetFileNamesInDirectory(path: String): List<String> {
+    memScoped {
+        val error = alloc<ObjCObjectVar<NSError?>>()
+        val result = NSFileManager.defaultManager.contentsOfDirectoryAtPath(path = path, error = error.ptr)
+            ?: throw Exception("Failed to get file names in directory $path: ${error.value?.localizedDescription}")
+
+        return result.map { it.toString() }
+    }
+}

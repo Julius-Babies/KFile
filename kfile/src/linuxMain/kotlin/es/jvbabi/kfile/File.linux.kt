@@ -177,3 +177,26 @@ internal actual fun platformWriteTextToFile(path: String, text: String) {
         fclose(file)
     }
 }
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun platformGetFileNamesInDirectory(path: String): List<String> {
+    val dir = opendir(path)
+    if (dir == null) {
+        perror("opendir")
+        throw Exception("Failed to open directory $path")
+    }
+
+    val files = mutableListOf<String>()
+    memScoped {
+        while (true) {
+            val entry = readdir(dir)?.pointed ?: break
+            val name = entry.d_name.toKString()
+            if (name != "." && name != "..") {
+                files += name
+            }
+        }
+    }
+
+    closedir(dir)
+    return files
+}

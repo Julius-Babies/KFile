@@ -245,3 +245,27 @@ internal actual fun platformWriteTextToFile(path: String, text: String) {
         }
     }
 }
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun platformGetFileNamesInDirectory(path: String): List<String> {
+    val files = mutableListOf<String>()
+    memScoped {
+        val findData = alloc<WIN32_FIND_DATAW>()
+        val handle = FindFirstFileW("$path/*", findData.ptr)
+
+        if (handle == INVALID_HANDLE_VALUE) {
+            throw Exception("Failed to find files in directory $path")
+        }
+
+        do {
+            val name = findData.cFileName.toKString()
+            if (name != "." && name != "..") {
+                files += name
+            }
+        } while (FindNextFileW(handle, findData.ptr) == 0)
+
+        FindClose(handle)
+    }
+
+    return files
+}
