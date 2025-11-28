@@ -56,6 +56,19 @@ class File(path: String) {
     val name: String
         get() = absolutePath.split('/').last()
 
+    /**
+     * Returns the extension of the file name, including the dot.
+     * If the file name has no extension, the filename is returned.
+     */
+    val extension: String
+        get() = name.substringAfterLast(".")
+
+    /**
+     * Returns the file name without the extension. If the file name has no extension, the filename is returned.
+     */
+    val nameWithoutExtension: String
+        get() = name.substringBeforeLast(".")
+
     fun exists(): Boolean = platformFileExists(absolutePath)
     fun isDirectory(): Boolean = exists() && platformFileIsDirectory(absolutePath)
 

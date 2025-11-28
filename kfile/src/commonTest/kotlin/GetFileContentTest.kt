@@ -6,7 +6,7 @@ import io.kotest.matchers.shouldBe
 
 class GetFileContentTest: FunSpec({
     test("Get content of file") {
-        val file = File.getWorkingDirectory().parent!!.resolve("testfiles").resolve("sample_file")
+        val file = File.getWorkingDirectory().parent!!.resolve("testfiles").resolve("sample_file.txt")
         file.readText() shouldBe SAMPLE_FILE_CONTENT
     }
 

@@ -9,11 +9,13 @@ class ListFilesTest: FunSpec({
         val dir = File.getWorkingDirectory().parent!!.resolve("testfiles")
         val files = dir.listFiles()
         files.size shouldBe 1
-        files[0].name shouldBe "sample_file"
+        files.first().name shouldBe "sample_file.txt"
+        files.first().nameWithoutExtension shouldBe "sample_file"
+        files.first().extension shouldBe "txt"
     }
 
     test("List files on file (exception)") {
-        val file = File.getWorkingDirectory().parent!!.resolve("testfiles").resolve("sample_file")
+        val file = File.getWorkingDirectory().parent!!.resolve("testfiles").resolve("sample_file.txt")
         shouldThrow<DirectoryOperationOnFileException> { file.listFiles() }
     }
 })
