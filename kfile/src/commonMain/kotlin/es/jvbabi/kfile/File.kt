@@ -117,6 +117,10 @@ class File(path: String) {
         if (!isDirectory()) throw DirectoryOperationOnFileException("Cannot list files from a file")
         return platformGetFileNamesInDirectory(absolutePath).map { this.resolve(it) }
     }
+    
+    fun copy(to: File) {
+        platformCopyFile(this.normalizedAbsolutePath, to.normalizedAbsolutePath)
+    }
 }
 
 /**
@@ -135,6 +139,7 @@ internal expect fun platformMkdir(path: String, recursive: Boolean)
 internal expect fun platformReadFileToString(path: String): String
 internal expect fun platformWriteTextToFile(path: String, text: String)
 internal expect fun platformGetFileNamesInDirectory(path: String): List<String>
+internal expect fun platformCopyFile(source: String, destination: String)
 
 open class FileException(message: String) : Exception(message)
 class FileOperationOnDirectoryException(message: String) : FileException("This operation is only allowed on a file, not a directory: $message")

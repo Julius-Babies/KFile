@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
+
 package es.jvbabi.kfile
 
 import kotlinx.cinterop.BetaInteropApi
@@ -26,7 +28,6 @@ internal actual fun platformIsPathAbsolute(path: String): Boolean = path.startsW
 internal actual fun platformGetWorkingDirectory(): String = NSFileManager.defaultManager.currentDirectoryPath
 internal actual fun platformFileExists(path: String): Boolean = NSFileManager.defaultManager.fileExistsAtPath(path)
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformFileIsDirectory(path: String): Boolean {
     memScoped {
         val boolVar = alloc<BooleanVar>()
@@ -36,7 +37,6 @@ internal actual fun platformFileIsDirectory(path: String): Boolean {
 }
 
 internal actual fun platformIsPathRoot(path: String): Boolean = path == "/"
-@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 internal actual fun platformGetFileSize(path: String): Long {
     val fileManager = NSFileManager.defaultManager
     memScoped {
@@ -53,7 +53,6 @@ internal actual fun platformGetFileSize(path: String): Long {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 internal actual fun platformDelete(path: String, recursive: Boolean) {
     val fileManager = NSFileManager.defaultManager
     val url = NSURL.fileURLWithPath(path)
@@ -64,7 +63,6 @@ internal actual fun platformDelete(path: String, recursive: Boolean) {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 internal actual fun platformMkdir(path: String, recursive: Boolean) {
     val fm = NSFileManager.defaultManager
     val url = NSURL.fileURLWithPath(path)
@@ -80,7 +78,6 @@ internal actual fun platformGetUserHome(): String {
         ?: throw Exception("Failed to get user home directory")
 }
 
-@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 internal actual fun platformReadFileToString(path: String): String {
     memScoped {
         val error = alloc<ObjCObjectVar<NSError?>>()
@@ -95,7 +92,6 @@ internal actual fun platformGetTempDirectory(): String {
         ?: throw Exception("Failed to get temporary directory")
 }
 
-@OptIn(BetaInteropApi::class, ExperimentalForeignApi::class)
 internal actual fun platformWriteTextToFile(path: String, text: String) {
     val nsString = NSString.create(string = text)
     val success = nsString.writeToFile(path, atomically = true, encoding = NSUTF8StringEncoding, error = null)
@@ -104,7 +100,6 @@ internal actual fun platformWriteTextToFile(path: String, text: String) {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 internal actual fun platformGetFileNamesInDirectory(path: String): List<String> {
     memScoped {
         val error = alloc<ObjCObjectVar<NSError?>>()
@@ -112,5 +107,30 @@ internal actual fun platformGetFileNamesInDirectory(path: String): List<String> 
             ?: throw Exception("Failed to get file names in directory $path: ${error.value?.localizedDescription}")
 
         return result.map { it.toString() }
+    }
+}
+
+internal actual fun platformCopyFile(source: String, destination: String) {
+    val fileManager = NSFileManager.defaultManager
+    val sourceUrl = NSURL.fileURLWithPath(source)
+    val destinationUrl = NSURL.fileURLWithPath(destination)
+
+    // NSFileManager cannot overwrite directly, so remove destination first if it exists
+    if (fileManager.fileExistsAtPath(destination)) {
+        fileManager.removeItemAtURL(destinationUrl, null)
+    }
+
+    memScoped {
+        val error = alloc<ObjCObjectVar<NSError?>>()
+        val success = fileManager.copyItemAtURL(
+            srcURL = sourceUrl,
+            toURL = destinationUrl,
+            error = error.ptr
+        )
+
+        if (!success) {
+            val errorDescription = error.value?.localizedDescription ?: "Unknown error"
+            throw IllegalStateException("Datei konnte nicht kopiert werden: $source -> $destination ($errorDescription)")
+        }
     }
 }

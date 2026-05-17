@@ -1,7 +1,10 @@
+@file:OptIn(ExperimentalForeignApi::class)
+
 package es.jvbabi.kfile
 
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.allocArray
 import kotlinx.cinterop.convert
@@ -11,6 +14,7 @@ import kotlinx.cinterop.pointed
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.refTo
 import kotlinx.cinterop.toKString
+import kotlinx.cinterop.usePinned
 import platform.posix.EEXIST
 import platform.posix.F_OK
 import platform.posix.SEEK_END
@@ -38,14 +42,13 @@ import platform.posix.unlink
 
 internal actual fun platformIsPathAbsolute(path: String): Boolean = path.startsWith('/')
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformGetWorkingDirectory(): String = memScoped {
     val size = 4096
     val buf = allocArray<ByteVar>(size)
     val result = getcwd(buf, size.convert())
     if (result == null) {
         perror("getcwd failed")
-        ""  // oder Exception je nach Design
+        ""
     } else {
         buf.toKString()
     }
@@ -55,7 +58,6 @@ internal actual fun platformFileExists(path: String): Boolean {
     return access(path, F_OK) == 0
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformFileIsDirectory(path: String): Boolean = memScoped {
     val statBuf = alloc<stat>()
     if (stat(path, statBuf.ptr) != 0) {
@@ -65,7 +67,6 @@ internal actual fun platformFileIsDirectory(path: String): Boolean = memScoped {
 }
 
 internal actual fun platformIsPathRoot(path: String): Boolean = path == "/"
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformGetFileSize(path: String): Long {
     memScoped {
         val statBuf = alloc<stat>()
@@ -77,7 +78,6 @@ internal actual fun platformGetFileSize(path: String): Long {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformDelete(path: String, recursive: Boolean) {
     fun deleteRecursively(p: String) {
         val statBuf = nativeHeap.alloc<stat>()
@@ -130,7 +130,6 @@ internal actual fun platformMkdir(path: String, recursive: Boolean) {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformGetUserHome(): String {
     memScoped {
         getenv("HOME")?.toKString()?.let { return it }
@@ -138,7 +137,6 @@ internal actual fun platformGetUserHome(): String {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformReadFileToString(path: String): String {
     val file = fopen(path, "rb") ?: throw IllegalArgumentException("File not found: $path")
     try {
@@ -162,7 +160,6 @@ internal actual fun platformGetTempDirectory(): String {
     return "/tmp"
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformWriteTextToFile(path: String, text: String) {
     val file = fopen(path, "wb") ?: throw IllegalArgumentException("Cannot open file: $path")
     try {
@@ -178,7 +175,6 @@ internal actual fun platformWriteTextToFile(path: String, text: String) {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformGetFileNamesInDirectory(path: String): List<String> {
     val dir = opendir(path)
     if (dir == null) {
@@ -199,4 +195,34 @@ internal actual fun platformGetFileNamesInDirectory(path: String): List<String> 
 
     closedir(dir)
     return files
+}
+
+internal actual fun platformCopyFile(source: String, destination: String) {
+    val bufferSize = 8192
+    val buffer = ByteArray(bufferSize)
+
+    val src = fopen(source, "rb")
+        ?: throw IllegalStateException("Quelldatei konnte nicht geöffnet werden: $source (errno=$errno)")
+
+    try {
+        val dst = fopen(destination, "wb")
+            ?: throw IllegalStateException("Zieldatei konnte nicht erstellt werden: $destination (errno=$errno)")
+
+        try {
+            buffer.usePinned { pinned ->
+                while (true) {
+                    val bytesRead = fread(pinned.addressOf(0), 1u, bufferSize.toULong(), src).toInt()
+                    if (bytesRead == 0) break
+                    val bytesWritten = fwrite(pinned.addressOf(0), 1u, bytesRead.toULong(), dst).toInt()
+                    if (bytesWritten != bytesRead) {
+                        throw IllegalStateException("Schreibfehler: $bytesWritten von $bytesRead Bytes geschrieben")
+                    }
+                }
+            }
+        } finally {
+            fclose(dst)
+        }
+    } finally {
+        fclose(src)
+    }
 }

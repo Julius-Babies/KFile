@@ -269,3 +269,11 @@ internal actual fun platformGetFileNamesInDirectory(path: String): List<String> 
 
     return files
 }
+
+internal actual fun platformCopyFile(source: String, destination: String) {
+    val success = CopyFileW(source, destination, 0)
+    if (success == 0) {
+        val error = GetLastError()
+        throw Exception("Failed to copy file: $error")
+    }
+}

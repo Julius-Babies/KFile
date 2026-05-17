@@ -69,3 +69,7 @@ internal actual fun platformWriteTextToFile(path: String, text: String) {
 internal actual fun platformGetFileNamesInDirectory(path: String): List<String> {
     return java.io.File(path).list()?.toList() ?: emptyList()
 }
+
+internal actual fun platformCopyFile(source: String, destination: String) {
+    java.io.File(source).copyTo(java.io.File(destination), overwrite = true)
+}
