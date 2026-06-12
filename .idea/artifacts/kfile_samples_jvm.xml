@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="kfile-samples-jvm">
+    <output-path>$PROJECT_DIR$/kfile-samples/build/libs</output-path>
+    <root id="archive" name="kfile-samples-jvm.jar">
+      <element id="module-output" name="KFile.kfile-samples.jvmMain" />
+    </root>
+  </artifact>
+</component>

@@ -16,7 +16,6 @@ repositories {
 
 kotlin {
     macosArm64()
-    macosX64()
     mingwX64()
     linuxX64()
     linuxArm64()
