@@ -24,6 +24,10 @@ kotlin {
     applyDefaultHierarchyTemplate()
 
     sourceSets {
+        commonMain.dependencies {
+            implementation(libs.kotlinx.io.core)
+        }
+
         commonTest.dependencies {
             implementation(libs.kotest.framework)
             implementation(libs.kotest.assertions)

@@ -1,5 +1,10 @@
 package es.jvbabi.kfile
 
+import kotlinx.io.Sink
+import kotlinx.io.Source
+import kotlinx.io.asSink
+import kotlinx.io.asSource
+import kotlinx.io.buffered
 import org.apache.commons.lang3.SystemUtils
 
 private val driveLetterRegex = Regex("""[a-z]:""")
@@ -68,6 +73,32 @@ internal actual fun platformWriteTextToFile(path: String, text: String) {
 
 internal actual fun platformGetFileNamesInDirectory(path: String): List<String> {
     return java.io.File(path).list()?.toList() ?: emptyList()
+}
+
+internal actual fun platformReadBytes(path: String): ByteArray {
+    return java.io.File(path).readBytes()
+}
+
+internal actual fun platformWriteBytes(path: String, bytes: ByteArray) {
+    java.io.File(path).writeBytes(bytes)
+}
+
+internal actual fun platformForEachLine(path: String, action: (String) -> Unit) {
+    java.io.File(path).bufferedReader().use { reader ->
+        var line = reader.readLine()
+        while (line != null) {
+            action(line)
+            line = reader.readLine()
+        }
+    }
+}
+
+internal actual fun platformFileSource(path: String): Source {
+    return java.io.FileInputStream(path).asSource().buffered()
+}
+
+internal actual fun platformFileSink(path: String): Sink {
+    return java.io.FileOutputStream(path).asSink().buffered()
 }
 
 internal actual fun platformCopyFile(source: String, destination: String) {

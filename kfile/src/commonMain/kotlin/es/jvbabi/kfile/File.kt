@@ -1,5 +1,8 @@
 package es.jvbabi.kfile
 
+import kotlinx.io.Sink
+import kotlinx.io.Source
+
 class File(path: String) {
 
     private val normalizedAbsolutePath: String = normalize(path)
@@ -113,6 +116,67 @@ class File(path: String) {
         platformWriteTextToFile(absolutePath, text)
     }
 
+    /**
+     * Reads the entire contents of this file as a ByteArray.
+     * If the file is very large, this may cause an OutOfMemoryError as all the content is loaded into memory.
+     * @throws FileOperationOnDirectoryException
+     */
+    fun readBytes(): ByteArray {
+        if (isDirectory()) throw FileOperationOnDirectoryException("Cannot read bytes from a directory")
+        return platformReadBytes(absolutePath)
+    }
+
+    /**
+     * Writes the given ByteArray to this file, replacing any existing content.
+     * @throws FileOperationOnDirectoryException
+     */
+    fun writeBytes(bytes: ByteArray) {
+        if (isDirectory()) throw FileOperationOnDirectoryException("Cannot write bytes to a directory")
+        platformWriteBytes(absolutePath, bytes)
+    }
+
+    /**
+     * Reads the file line by line and returns all lines as a list.
+     * Unlike [readText], this does not split by lines using text splitting internally
+     * but rather reads lines one by one.
+     */
+    fun readLines(): List<String> {
+        if (isDirectory()) throw FileOperationOnDirectoryException("Cannot read lines from a directory")
+        val lines = mutableListOf<String>()
+        platformForEachLine(absolutePath) { lines.add(it) }
+        return lines
+    }
+
+    /**
+     * Reads the file line by line, calling [action] for each line.
+     * This is a streaming operation and does not load the entire file into memory.
+     * @throws FileOperationOnDirectoryException
+     */
+    fun forEachLine(action: (String) -> Unit) {
+        if (isDirectory()) throw FileOperationOnDirectoryException("Cannot read lines from a directory")
+        platformForEachLine(absolutePath, action)
+    }
+
+    /**
+     * Opens a streaming [Source] for reading bytes from this file.
+     * The source is backed by a file handle; close it when done to release resources.
+     * @throws FileOperationOnDirectoryException
+     */
+    fun source(): Source {
+        if (isDirectory()) throw FileOperationOnDirectoryException("Cannot open source from a directory")
+        return platformFileSource(absolutePath)
+    }
+
+    /**
+     * Opens a streaming [Sink] for writing bytes to this file.
+     * The sink is backed by a file handle; close it when done to flush and release resources.
+     * @throws FileOperationOnDirectoryException
+     */
+    fun sink(): Sink {
+        if (isDirectory()) throw FileOperationOnDirectoryException("Cannot open sink to a directory")
+        return platformFileSink(absolutePath)
+    }
+
     fun listFiles(): List<File> {
         if (!isDirectory()) throw DirectoryOperationOnFileException("Cannot list files from a file")
         return platformGetFileNamesInDirectory(absolutePath).map { this.resolve(it) }
@@ -138,6 +202,11 @@ internal expect fun platformDelete(path: String, recursive: Boolean)
 internal expect fun platformMkdir(path: String, recursive: Boolean)
 internal expect fun platformReadFileToString(path: String): String
 internal expect fun platformWriteTextToFile(path: String, text: String)
+internal expect fun platformReadBytes(path: String): ByteArray
+internal expect fun platformWriteBytes(path: String, bytes: ByteArray)
+internal expect fun platformForEachLine(path: String, action: (String) -> Unit)
+internal expect fun platformFileSource(path: String): Source
+internal expect fun platformFileSink(path: String): Sink
 internal expect fun platformGetFileNamesInDirectory(path: String): List<String>
 internal expect fun platformCopyFile(source: String, destination: String)
 

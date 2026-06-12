@@ -1,6 +1,20 @@
+@file:OptIn(ExperimentalForeignApi::class)
+
 package es.jvbabi.kfile
 
 import kotlinx.cinterop.*
+import kotlinx.io.Buffer
+import kotlinx.io.EOFException
+import kotlinx.io.RawSink
+import kotlinx.io.RawSource
+import kotlinx.io.Sink
+import kotlinx.io.Source
+import kotlinx.io.buffered
+import platform.posix.fclose
+import platform.posix.fflush
+import platform.posix.fopen
+import platform.posix.fread
+import platform.posix.fwrite
 import platform.windows.*
 
 /**
@@ -12,7 +26,6 @@ internal actual fun platformIsPathAbsolute(path: String): Boolean {
 
 private val regex = Regex("""[a-z]:""")
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformGetWorkingDirectory(): String {
     memScoped {
         val size = 4096u
@@ -27,13 +40,11 @@ internal actual fun platformGetWorkingDirectory(): String {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformFileExists(path: String): Boolean = memScoped {
     val attrs = GetFileAttributesW(path)
     attrs != INVALID_FILE_ATTRIBUTES && (attrs and FILE_ATTRIBUTE_DIRECTORY.toUInt()) == 0u
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformFileIsDirectory(path: String): Boolean {
     memScoped {
         val attrs = GetFileAttributesW(path)
@@ -48,7 +59,6 @@ internal actual fun platformIsPathRoot(path: String): Boolean {
     return regex.matchEntire(path.lowercase()) != null
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformGetFileSize(path: String): Long {
     memScoped {
         val data = alloc<WIN32_FILE_ATTRIBUTE_DATA>()
@@ -69,7 +79,6 @@ internal actual fun platformGetFileSize(path: String): Long {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformDelete(path: String, recursive: Boolean) {
     fun deleteRecursively(p: String) {
         val findData = nativeHeap.alloc<WIN32_FIND_DATAA>()
@@ -130,7 +139,6 @@ internal actual fun platformMkdir(path: String, recursive: Boolean) {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformGetUserHome(): String {
     memScoped {
         val outPtr = alloc<CPointerVar<WCHARVar>>()
@@ -142,7 +150,6 @@ internal actual fun platformGetUserHome(): String {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformReadFileToString(path: String): String {
     memScoped {
         val handle = CreateFileW(
@@ -193,7 +200,6 @@ internal actual fun platformReadFileToString(path: String): String {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformGetTempDirectory(): String {
     val bufferLength = MAX_PATH + 1
     return memScoped {
@@ -208,7 +214,6 @@ internal actual fun platformGetTempDirectory(): String {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformWriteTextToFile(path: String, text: String) {
     memScoped {
         val handle = CreateFileW(
@@ -246,7 +251,6 @@ internal actual fun platformWriteTextToFile(path: String, text: String) {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformGetFileNamesInDirectory(path: String): List<String> {
     val files = mutableListOf<String>()
     memScoped {
@@ -269,6 +273,196 @@ internal actual fun platformGetFileNamesInDirectory(path: String): List<String> 
 
     return files
 }
+
+internal actual fun platformReadBytes(path: String): ByteArray = memScoped {
+    val handle = CreateFileW(
+        path,
+        GENERIC_READ,
+        FILE_SHARE_READ.toUInt(),
+        null,
+        OPEN_EXISTING.toUInt(),
+        FILE_ATTRIBUTE_NORMAL.toUInt(),
+        null
+    )
+    if (handle == INVALID_HANDLE_VALUE) {
+        throw IllegalArgumentException("Cannot open file: $path")
+    }
+
+    try {
+        val fileSizeHigh = alloc<DWORDVar>()
+        val fileSizeLow = GetFileSize(handle, fileSizeHigh.ptr)
+        if (fileSizeLow == INVALID_FILE_SIZE && GetLastError() != 0u) {
+            throw IllegalStateException("Cannot get file size for: $path")
+        }
+
+        val size = (fileSizeHigh.value.toULong() shl 32) or fileSizeLow.toULong()
+        if (size > Int.MAX_VALUE.toULong()) {
+            throw IllegalStateException("File too large to read into memory")
+        }
+
+        val buffer = ByteArray(size.toInt())
+        val bytesRead = alloc<DWORDVar>()
+
+        val success = buffer.usePinned { pinned ->
+            ReadFile(
+                handle,
+                pinned.addressOf(0),
+                size.toUInt(),
+                bytesRead.ptr,
+                null
+            )
+        }
+        if (success == 0 || bytesRead.value.toULong() != size) {
+            throw IllegalStateException("Failed to read file: $path")
+        }
+
+        buffer
+    } finally {
+        CloseHandle(handle)
+    }
+}
+
+internal actual fun platformWriteBytes(path: String, bytes: ByteArray) = memScoped {
+    val handle = CreateFileW(
+        path,
+        GENERIC_WRITE.toUInt(),
+        0u,
+        null,
+        CREATE_ALWAYS.toUInt(),
+        FILE_ATTRIBUTE_NORMAL.toUInt(),
+        null
+    )
+    if (handle == INVALID_HANDLE_VALUE) {
+        throw IllegalStateException("Cannot open file: $path")
+    }
+
+    try {
+        val bytesWritten = alloc<DWORDVar>()
+        val success = bytes.usePinned { pinned ->
+            WriteFile(
+                handle,
+                pinned.addressOf(0),
+                bytes.size.toUInt(),
+                bytesWritten.ptr,
+                null
+            )
+        }
+
+        if (success == 0 || bytesWritten.value.toInt() != bytes.size) {
+            throw IllegalStateException("Failed to write file: $path")
+        }
+    } finally {
+        CloseHandle(handle)
+    }
+}
+
+internal actual fun platformForEachLine(path: String, action: (String) -> Unit) = memScoped {
+    val handle = CreateFileW(
+        path,
+        GENERIC_READ,
+        FILE_SHARE_READ.toUInt(),
+        null,
+        OPEN_EXISTING.toUInt(),
+        FILE_ATTRIBUTE_NORMAL.toUInt(),
+        null
+    )
+    if (handle == INVALID_HANDLE_VALUE) {
+        throw IllegalArgumentException("Cannot open file: $path")
+    }
+
+    try {
+        val chunkSize = 8192
+        val buffer = ByteArray(chunkSize)
+        val bytesRead = alloc<DWORDVar>()
+        val lineBuilder = StringBuilder()
+
+        while (true) {
+            val success = buffer.usePinned { pinned ->
+                ReadFile(
+                    handle,
+                    pinned.addressOf(0),
+                    chunkSize.toUInt(),
+                    bytesRead.ptr,
+                    null
+                )
+            }
+
+            val count = bytesRead.value.toInt()
+            if (success == 0 || count == 0) {
+                if (lineBuilder.isNotEmpty()) {
+                    action(lineBuilder.toString())
+                    lineBuilder.clear()
+                }
+                break
+            }
+
+            for (i in 0 until count) {
+                val c = buffer[i].toInt().toChar()
+                if (c == '\n') {
+                    action(lineBuilder.toString())
+                    lineBuilder.clear()
+                } else if (c != '\r') {
+                    lineBuilder.append(c)
+                }
+            }
+        }
+
+        if (lineBuilder.isNotEmpty()) {
+            action(lineBuilder.toString())
+        }
+    } finally {
+        CloseHandle(handle)
+    }
+}
+
+private class FileRawSource(path: String) : RawSource {
+    private val file = fopen(path, "rb") ?: throw IllegalArgumentException("File not found: $path")
+
+    override fun readAtMostTo(sink: Buffer, byteCount: Long): Long {
+        val count = byteCount.toInt().coerceAtMost(8192)
+        val buffer = ByteArray(count)
+        memScoped {
+            val bytesRead = fread(buffer.refTo(0), 1u, count.toULong(), file).toInt()
+            if (bytesRead <= 0) return -1L
+            sink.write(buffer, 0, bytesRead)
+            return bytesRead.toLong()
+        }
+    }
+
+    override fun close() {
+        fclose(file)
+    }
+}
+
+private class FileRawSink(path: String) : RawSink {
+    private val file = fopen(path, "wb") ?: throw IllegalArgumentException("Cannot open file: $path")
+
+    override fun write(source: Buffer, byteCount: Long) {
+        val count = byteCount.toInt()
+        val buffer = ByteArray(count)
+        var offset = 0
+        while (offset < count) {
+            val bytesRead = source.readAtMostTo(buffer, offset, count)
+            if (bytesRead == -1) throw EOFException("Unexpected end of source in write")
+            offset += bytesRead
+        }
+        memScoped {
+            fwrite(buffer.refTo(0), 1u, count.toULong(), file)
+        }
+    }
+
+    override fun flush() {
+        fflush(file)
+    }
+
+    override fun close() {
+        fclose(file)
+    }
+}
+
+internal actual fun platformFileSource(path: String): Source = FileRawSource(path).buffered()
+
+internal actual fun platformFileSink(path: String): Sink = FileRawSink(path).buffered()
 
 internal actual fun platformCopyFile(source: String, destination: String) {
     val success = CopyFileW(source, destination, 0)
